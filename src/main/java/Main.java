@@ -201,35 +201,45 @@ public class Main extends ListenerAdapter {
                     createHelpEmbed("How to add a Userstory", "To create a user story all you need to type is:\n" +
                             ";scrum addUserstory [priority in a number such as 1 leave it blank to auto assign] [Write down the task that needs to happen] \n" +
                             ";scrum addUserstory 1 This is a task");
-                }
-                if(userHasProject(user)){
-                    Scrum userProject = user.getCurrentProject();
-                    String userStoryPrionumberString = splittedCommand[2].trim();
-                    int userStoryPrionumber =0;
-                    boolean parsed = true;
-                    try{
-                        userStoryPrionumber = Integer.parseInt(userStoryPrionumberString);
-                    }catch (Exception e){
-                        parsed = false;
-                        System.out.println(e);
-                    }
-                    String userStoryTask = "";
-                    for (int i = 3; i < splittedCommand.length; i++) {
-                        userStoryTask += userStoryTask + splittedCommand[i];
-                    }
-                    UserStory userStory;
-                    if(parsed){
-                        //The userstory has a priority number.
-                        userStory= new UserStory(userStoryPrionumber, userStoryTask);
-                    }else{
-                        //The userstory doesnt have a priority number
-                        userStory = new UserStory(userProject.getProductBacklog().size(), userStoryTask);
-                    }
-                    userProject.getProductBacklog().add(userStory);
-                    createSuccesEmbed("User story creation", "User story created","The user story was created succesfully!");
                 }else{
-                    sendMessage("You dont have a scrumproject you are currently working on");
+                    if(userHasProject(user)){
+                        Scrum userProject = user.getCurrentProject();
+                        String userStoryPrionumberString = splittedCommand[2].trim();
+                        int userStoryPrionumber =0;
+                        boolean parsed = true;
+                        try{
+                            userStoryPrionumber = Integer.parseInt(userStoryPrionumberString);
+                        }catch (Exception e){
+                            parsed = false;
+                            System.out.println(e);
+                        }
+                        String userStoryTask = "";
+                        for (int i = 3; i < splittedCommand.length; i++) {
+                            userStoryTask = userStoryTask + " " +splittedCommand[i];
+                        }
+                        UserStory userStory;
+                        if(parsed){
+                            /*If the userstory prioritynumber has already been selected (Such as 1)
+                              We are going to make every other Userstory priority number shift downwards one
+                              This is so we create an correct order of the userstorys
+                            */
+                            ArrayList<UserStory> userStories = user.getCurrentProject().getProductBacklog();
+                            boolean shiftUserStoryNumbers = userStoryNumberExists(userStoryPrionumber, userStories);
+                            if(shiftUserStoryNumbers){
+                                shiftUserStories(userStoryPrionumber,userStories);
+                            }
+                            userStory= new UserStory(userStoryPrionumber, userStoryTask);
+                        }else{
+                            //The userstory doesnt have a priority number
+                            userStory = new UserStory(userProject.getProductBacklog().size() + 1, userStoryTask);
+                        }
+                        userProject.getProductBacklog().add(userStory);
+                        createSuccesEmbed("User story creation", "User story created","The user story was created succesfully!");
+                    }else{
+                        sendMessage("You dont have a scrumproject you are currently working on");
+                    }
                 }
+
                 break;
 
             case "assignUserStory":
@@ -237,34 +247,35 @@ public class Main extends ListenerAdapter {
                     createHelpEmbed("Assign a user story", "To assign a user story to a user you would need to do the following: \n" +
                             ";scrum assignUserStory @[username] [Choose a UserStory using its weight] \n" +
                             "So use it as such: ;scrum asssignUserStory @lhhamming 1");
-                }
-                if(userHasProject(user)){
-                    if(user.getCurrentProject().getProductBacklog().size() > 0){
-                        //Goes to the current project.
-                        int selectedUserStory = 0;
-                        boolean parsed = false;
-                        try{
-                            selectedUserStory = Integer.parseInt(splittedCommand[4]);
-                            parsed = true;
-                        }catch (Exception e){};
-                        if(parsed){
-                            sendMessage("Select a task");
-                            String toSendMessage = "";
-                            int iterator = 0;
-                            for(Task t : user.getCurrentProject().getProductBacklog().get(selectedUserStory).getTasks()){
-                                iterator++;
-                                toSendMessage = toSendMessage + "**"+iterator+"**" + "\n **Task: **" +t.getTodoTask() + "\n **Assigned member: **" + t.getAssignedMember() + "\n";
+                }else{
+                    if(userHasProject(user)){
+                        if(user.getCurrentProject().getProductBacklog().size() > 0){
+                            //Goes to the current project.
+                            int selectedUserStory = 0;
+                            boolean parsed = false;
+                            try{
+                                selectedUserStory = Integer.parseInt(splittedCommand[4]);
+                                parsed = true;
+                            }catch (Exception e){};
+                            if(parsed){
+                                sendMessage("Select a task");
+                                String toSendMessage = "";
+                                int iterator = 0;
+                                for(Task t : user.getCurrentProject().getProductBacklog().get(selectedUserStory).getTasks()){
+                                    iterator++;
+                                    toSendMessage = toSendMessage + "**"+iterator+"**" + "\n **Task: **" +t.getTodoTask() + "\n **Assigned member: **" + t.getAssignedMember() + "\n";
+                                }
+                                toSendMessage = toSendMessage + "\n Please make a selection like so: \n ;selectTask [Task number]";
+                                sendMessage(toSendMessage);
+                            }else{
+                                sendMessage("Please type in a number!");
                             }
-                            toSendMessage = toSendMessage + "\n Please make a selection like so: \n ;selectTask [Task number]";
-                            sendMessage(toSendMessage);
                         }else{
-                            sendMessage("Please type in a number!");
+                            sendMessage("You need to create a user story first");
                         }
                     }else{
-                        sendMessage("You need to create a user story first");
+                        sendMessage("You need to create a project first!");
                     }
-                }else{
-                    sendMessage("You need to create a project first!");
                 }
                 break;
 
@@ -288,6 +299,32 @@ public class Main extends ListenerAdapter {
                 createHelpEmbed();
                 break;
         }
+    }
+
+    private void shiftUserStories(int userStoryPrionumber, ArrayList<UserStory> userStories) {
+        boolean shiftingPointFound = false;
+        for (UserStory u : userStories){
+            if(u.priority == userStoryPrionumber || shiftingPointFound){
+                shiftingPointFound = true;
+                u.priority = u.priority + 1;
+            }
+        }
+    }
+
+    private boolean userStoryNumberExists(int userStoryPrionumber, ArrayList<UserStory> productBacklog) {
+        for (UserStory u : productBacklog){
+            if(u.priority == userStoryPrionumber){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int getCorrectPrionumber(int userStoryPrionumber) {
+        int correctNumber = userStoryPrionumber;
+        UserData.User user = DataProvider.getInstance().getUser(event.getAuthor().getIdLong());
+        ArrayList<UserStory> userStories = user.getCurrentProject().getProductBacklog();
+        return correctNumber;
     }
 
     private void createErrorEmbed(String lineValue) {

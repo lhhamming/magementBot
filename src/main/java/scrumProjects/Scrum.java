@@ -50,6 +50,18 @@ public class Scrum {
                 "Scrummaster: " + scrumMaster.getName()+"\n"+
                 "Prodcutownerr: " + productOwner + "\n" +
                 "Team: " + "\n" +team.toString() + "\n" +
-                "UserStorry backlog: " + productBacklog.toString();
+                "UserStorry backlog: " + printBacklog();
+    }
+
+    private String printBacklog() {
+        String[] backlog = new String[productBacklog.size()];
+        String retVal = "";
+        for (UserStory u : productBacklog){
+            backlog[u.getPriority() - 1] = u.toString();
+        }
+        for (int i = 0; i < backlog.length; i++) {
+            retVal = retVal + "\n" + backlog[i];
+        }
+        return retVal;
     }
 }
