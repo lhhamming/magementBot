@@ -1,10 +1,14 @@
 import net.dv8tion.jda.api.AccountType;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.utils.MemberCachePolicy;
+import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import org.w3c.dom.UserDataHandler;
 import scrumProjects.Scrum;
 import scrumProjects.Task;
@@ -20,6 +24,7 @@ import java.io.FileNotFoundException;
 import java.lang.reflect.Array;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.concurrent.ExecutionException;
 
@@ -28,11 +33,9 @@ public class Main extends ListenerAdapter {
     private MessageReceivedEvent event;
 
     public static void main(String[] args) throws LoginException, FileNotFoundException {
-        JDABuilder builder = new JDABuilder(AccountType.BOT);
-        String token = getBotKey();
-        builder.setToken(token);
-        builder.addEventListeners(new Main());
-        builder.build();
+        JDABuilder.createDefault(getBotKey())
+                .addEventListeners(new Main())
+                .build();
     }
 
     private static String getBotKey() throws FileNotFoundException {
@@ -266,7 +269,7 @@ public class Main extends ListenerAdapter {
                                     toSendMessage = toSendMessage + "**"+iterator+"**" + "\n **Task: **" +t.getTodoTask() + "\n **Assigned member: **" + t.getAssignedMember() + "\n";
                                 }
                                 toSendMessage = toSendMessage + "\n Please make a selection like so: \n ;selectTask [Task number]";
-                                sendMessage(toSendMessage);
+                                createContinueMessage(user.getCurrentProject().getId(),"Assigning a user story","Scrum assigning",toSendMessage);
                             }else{
                                 sendMessage("Please type in a number!");
                             }
@@ -277,6 +280,11 @@ public class Main extends ListenerAdapter {
                         sendMessage("You need to create a project first!");
                     }
                 }
+                break;
+
+
+            case "selectTask":
+
                 break;
 
             case "getUserStorys":
@@ -301,6 +309,8 @@ public class Main extends ListenerAdapter {
         }
     }
 
+
+
     private void shiftUserStories(int userStoryPrionumber, ArrayList<UserStory> userStories) {
         boolean shiftingPointFound = false;
         for (UserStory u : userStories){
@@ -319,13 +329,15 @@ public class Main extends ListenerAdapter {
         }
         return false;
     }
-
+/*
     private int getCorrectPrionumber(int userStoryPrionumber) {
         int correctNumber = userStoryPrionumber;
         UserData.User user = DataProvider.getInstance().getUser(event.getAuthor().getIdLong());
         ArrayList<UserStory> userStories = user.getCurrentProject().getProductBacklog();
         return correctNumber;
     }
+
+ */
 
     private void createErrorEmbed(String lineValue) {
         EmbedBuilder eb = new EmbedBuilder();
@@ -382,6 +394,15 @@ public class Main extends ListenerAdapter {
         eb.setColor(Color.RED);
         eb.setDescription("How to create a scrum project!");
         eb.addField("creation", "for a scrum project you need to atleast have \n Scrum master (A user), A product Owner (Also a user) and a team of users", false);
+        sendMessage(eb.build());
+    }
+
+    private void createContinueMessage(int id,String title,String lineName,String lineValue) {
+        EmbedBuilder eb = new EmbedBuilder();
+        eb.setTitle(title, null);
+        eb.setColor(Color.YELLOW);
+        eb.setDescription("Scrum Id: " + id);
+        eb.addField(lineName,lineValue,false);
         sendMessage(eb.build());
     }
 
