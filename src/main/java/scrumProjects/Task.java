@@ -52,6 +52,6 @@ public class Task {
     public String toString() {
         return "\n **Status: **" + this.status + "\n" +
                 "**Task: **" + this.todoTask + "\n" +
-                "**Assigned member**" + this.assignedMember;
+                "**Assigned member: **" + this.assignedMember.getName() + "\n";
     }
 }

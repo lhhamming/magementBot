@@ -1,15 +1,11 @@
-import net.dv8tion.jda.api.AccountType;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.MessageHistory;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.requests.GatewayIntent;
-import net.dv8tion.jda.api.utils.MemberCachePolicy;
-import net.dv8tion.jda.api.utils.cache.CacheFlag;
-import org.w3c.dom.UserDataHandler;
 import scrumProjects.Scrum;
 import scrumProjects.Task;
 import scrumProjects.Team;
@@ -18,15 +14,10 @@ import scrumProjects.UserStory;
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 import java.awt.*;
-import java.beans.FeatureDescriptor;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.lang.reflect.Array;
-import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Scanner;
-import java.util.concurrent.ExecutionException;
 
 public class Main extends ListenerAdapter {
 
@@ -137,7 +128,7 @@ public class Main extends ListenerAdapter {
                 break;
 
             case "delete":
-
+                //TODO: create an deletion method
                 break;
 
             case "show":
@@ -216,10 +207,7 @@ public class Main extends ListenerAdapter {
                             parsed = false;
                             System.out.println(e);
                         }
-                        String userStoryTask = "";
-                        for (int i = 3; i < splittedCommand.length; i++) {
-                            userStoryTask = userStoryTask + " " +splittedCommand[i];
-                        }
+                        String userStoryTask = getSentenceFromStringArray(splittedCommand,3);
                         UserStory userStory;
                         if(parsed){
                             /*If the userstory prioritynumber has already been selected (Such as 1)
@@ -242,14 +230,41 @@ public class Main extends ListenerAdapter {
                         sendMessage("You dont have a scrumproject you are currently working on");
                     }
                 }
-
                 break;
 
-            case "assignUserStory":
+            case "addTask":
+                if(splittedCommand[2].equalsIgnoreCase("help")){
+                    createHelpEmbed("Adding a task",
+                                    "To create a task you would enter the following: \n" +
+                                            ";scrum addTask [UserStory by weight] [Text for the task] \n" +
+                                            "So it would go as follows: ;scrum addTask 1 Creating a Login screen");
+                }else{
+                    if(userHasProject(user) && userProjectHasUserStory(user)){
+                        int selectedUserStory = 0;
+                        //TODO: Crate an method for parsing and giving back the parsed integer (With an boolean)
+                        boolean parsed = false;
+                        try{
+                            selectedUserStory = Integer.parseInt(splittedCommand[2]);
+                            parsed = true;
+                        }catch (Exception e){};
+                        if(parsed){
+                            String todoTaskString = getSentenceFromStringArray(splittedCommand, 3);
+                            Task t = new Task(todoTaskString);
+                            user.getCurrentProject().getProductBacklog().get(selectedUserStory - 1).addTask(t);
+                            createSuccesEmbed("Task creaction", "Task create","The task was added succesfully!");
+                        }
+                    }else{
+                        sendMessage("Please create a project or create an user story! \n " +
+                                    ";scrum create help or ;scrum addUserstory help");
+                    }
+                }
+                break;
+
+            case "assignUserstory":
                 if(splittedCommand[2].equalsIgnoreCase("help")){
                     createHelpEmbed("Assign a user story", "To assign a user story to a user you would need to do the following: \n" +
-                            ";scrum assignUserStory @[username] [Choose a UserStory using its weight] \n" +
-                            "So use it as such: ;scrum asssignUserStory @lhhamming 1");
+                            ";scrum assignUserStory [Priority number from userstory]\n" +
+                            "So use it as such: ;scrum asssignUserstory 1");
                 }else{
                     if(userHasProject(user)){
                         if(user.getCurrentProject().getProductBacklog().size() > 0){
@@ -257,7 +272,7 @@ public class Main extends ListenerAdapter {
                             int selectedUserStory = 0;
                             boolean parsed = false;
                             try{
-                                selectedUserStory = Integer.parseInt(splittedCommand[4]);
+                                selectedUserStory = Integer.parseInt(splittedCommand[2]) - 1;
                                 parsed = true;
                             }catch (Exception e){};
                             if(parsed){
@@ -266,10 +281,10 @@ public class Main extends ListenerAdapter {
                                 int iterator = 0;
                                 for(Task t : user.getCurrentProject().getProductBacklog().get(selectedUserStory).getTasks()){
                                     iterator++;
-                                    toSendMessage = toSendMessage + "**"+iterator+"**" + "\n **Task: **" +t.getTodoTask() + "\n **Assigned member: **" + t.getAssignedMember() + "\n";
+                                    toSendMessage = toSendMessage + "Task: " + iterator + "\n **Task: **" +t.getTodoTask() + "\n **Assigned member: **" + t.getAssignedMember() + "\n";
                                 }
-                                toSendMessage = toSendMessage + "\n Please make a selection like so: \n ;selectTask [Task number]";
-                                createContinueMessage(user.getCurrentProject().getId(),"Assigning a user story","Scrum assigning",toSendMessage);
+                                toSendMessage = toSendMessage + "\n Please make a selection like so: \n ;scrum assignTask @[Username] [Task number]";
+                                createContinueMessage(user.getCurrentProject().getId(),user.getId(),"Assigning a task","Task assigning",toSendMessage);
                             }else{
                                 sendMessage("Please type in a number!");
                             }
@@ -283,7 +298,34 @@ public class Main extends ListenerAdapter {
                 break;
 
 
-            case "selectTask":
+            case "assignTask":
+                //Filter through all messages to find the one that was send by the user
+                Message selectedTaskMessage = findUserstoryMessage(user);
+                if(selectedTaskMessage != null){
+                    int selectedTask = 0;
+                    boolean parsed = false;
+                    try{
+                        selectedTask = Integer.parseInt(splittedCommand[3]);
+                        parsed = true;
+                    }catch (Exception e){};
+                    if(parsed){
+                        //selectTask is the integer that the user chooses from the list of tasks.
+                        int selectedTaskId = getTaskFromEmbedMessage(selectedTaskMessage, selectedTask) - 1;
+                        int scrumId = getScrumIdFromEmbedMessage(selectedTaskMessage) - 1;
+                        user.getCurrentProject().getProductBacklog().get(scrumId)
+                                .getTasks()
+                                .get(selectedTaskId)
+                                .setAssignedMember(DataProvider.getInstance().getUser(event.getMessage().
+                                                   getMentionedUsers().get(0).getIdLong()));
+
+                        createSuccesEmbed("Assigned succesfull!", "Assigning a task", "The task was assigned to the user succesfully!");
+
+                    }else{
+                        createErrorEmbed("Please user numbers! such as: ;scrum selectTask @[Username] 1");
+                    }
+                }else{
+                    createErrorEmbed("No message was found with your usedId and task.");
+                }
 
                 break;
 
@@ -309,6 +351,70 @@ public class Main extends ListenerAdapter {
         }
     }
 
+    private String getSentenceFromStringArray(String[] sentenceArray, int startingInt) {
+        String retVal = "";
+        for (int i = startingInt; i < sentenceArray.length; i++) {
+            retVal = retVal + sentenceArray[i] + " ";
+        }
+
+        return retVal;
+    }
+
+    private boolean userProjectHasUserStory(UserData.User user) {
+        if(user.getCurrentProject().getProductBacklog().size() > 0){
+            return true;
+        }
+        return false;
+    }
+
+    private int getScrumIdFromEmbedMessage(Message selectedTaskMessage) {
+        int retVal = -1;
+        for (MessageEmbed m : selectedTaskMessage.getEmbeds()){
+            String[] splittedEmbedDescription = m.getDescription().split(" ");
+            int scrumId = Integer.parseInt(splittedEmbedDescription[2]);
+            return scrumId;
+        }
+        return retVal;
+    }
+
+    private Message findUserstoryMessage(UserData.User user) {
+        Message retVal = null;
+        //Get all messages from the server
+        MessageHistory history = new MessageHistory(event.getTextChannel());
+        for (int j = 0; j < history.retrievePast(10).complete().size(); j++) {
+            Message m = history.getRetrievedHistory().get(j);
+            if(m.getEmbeds().size() > 0){
+                //the message is embedded
+                for (MessageEmbed embed : m.getEmbeds()){
+                    System.out.println(embed.getDescription());
+                    if(embed.getDescription().length() > 0){
+                        String[] splittedEmbedDescription = embed.getDescription().split(" ");
+                        if(Long.parseLong(splittedEmbedDescription[6]) == user.getId()){
+                            //It is the correct message
+                            return m;
+                        }
+                    }
+                }
+            }
+        }
+        return retVal;
+    }
+
+    private int getTaskFromEmbedMessage(Message selectedTaskMessage, int selectedTaskNumber) {
+        int retVal = -1;
+        for (MessageEmbed embed : selectedTaskMessage.getEmbeds()){
+            for (MessageEmbed.Field field : embed.getFields()){
+                System.out.println("Field values: " + field.getValue());
+                String[] splittedField = field.getValue().split(" ");
+                String selectedId = splittedField[1].trim();
+                System.out.println("selected task number: " + selectedId);
+                if(selectedTaskNumber == Integer.parseInt(selectedId)){
+                    return Integer.parseInt(selectedId);
+                }
+            }
+        }
+        return retVal;
+    }
 
 
     private void shiftUserStories(int userStoryPrionumber, ArrayList<UserStory> userStories) {
@@ -329,15 +435,6 @@ public class Main extends ListenerAdapter {
         }
         return false;
     }
-/*
-    private int getCorrectPrionumber(int userStoryPrionumber) {
-        int correctNumber = userStoryPrionumber;
-        UserData.User user = DataProvider.getInstance().getUser(event.getAuthor().getIdLong());
-        ArrayList<UserStory> userStories = user.getCurrentProject().getProductBacklog();
-        return correctNumber;
-    }
-
- */
 
     private void createErrorEmbed(String lineValue) {
         EmbedBuilder eb = new EmbedBuilder();
@@ -397,11 +494,11 @@ public class Main extends ListenerAdapter {
         sendMessage(eb.build());
     }
 
-    private void createContinueMessage(int id,String title,String lineName,String lineValue) {
+    private void createContinueMessage(int id, Long userId,String title,String lineName,String lineValue) {
         EmbedBuilder eb = new EmbedBuilder();
         eb.setTitle(title, null);
         eb.setColor(Color.YELLOW);
-        eb.setDescription("Scrum Id: " + id);
+        eb.setDescription("Scrum Id: " + id + " Send by userId: " + userId);
         eb.addField(lineName,lineValue,false);
         sendMessage(eb.build());
     }
