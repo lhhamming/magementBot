@@ -50,6 +50,11 @@ public class Task {
 
     @Override
     public String toString() {
+        if(this.assignedMember == null){
+            return "\n **Status: **" + this.status + "\n" +
+                    "**Task: **" + this.todoTask + "\n" +
+                    "**Assigned member: ** No one \n";
+        }
         return "\n **Status: **" + this.status + "\n" +
                 "**Task: **" + this.todoTask + "\n" +
                 "**Assigned member: **" + this.assignedMember.getName() + "\n";

@@ -386,7 +386,6 @@ public class Main extends ListenerAdapter {
             if(m.getEmbeds().size() > 0){
                 //the message is embedded
                 for (MessageEmbed embed : m.getEmbeds()){
-                    System.out.println(embed.getDescription());
                     if(embed.getDescription().length() > 0){
                         String[] splittedEmbedDescription = embed.getDescription().split(" ");
                         if(Long.parseLong(splittedEmbedDescription[6]) == user.getId()){
@@ -405,11 +404,15 @@ public class Main extends ListenerAdapter {
         for (MessageEmbed embed : selectedTaskMessage.getEmbeds()){
             for (MessageEmbed.Field field : embed.getFields()){
                 System.out.println("Field values: " + field.getValue());
-                String[] splittedField = field.getValue().split(" ");
-                String selectedId = splittedField[1].trim();
-                System.out.println("selected task number: " + selectedId);
-                if(selectedTaskNumber == Integer.parseInt(selectedId)){
-                    return Integer.parseInt(selectedId);
+                String[] splittedField = field.getValue().split("\n");
+                for (int i = 0; i < splittedField.length; i++) {
+                    if(splittedField[i].trim().equalsIgnoreCase("task: " +selectedTaskNumber)){
+                        retVal = selectedTaskNumber;
+                    }
+                }
+                System.out.println("selected task number: " + retVal);
+                if(selectedTaskNumber == retVal){
+                    return retVal;
                 }
             }
         }
