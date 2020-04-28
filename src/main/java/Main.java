@@ -1,23 +1,19 @@
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.MessageHistory;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.events.ShutdownEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import scrumProjects.Scrum;
-import scrumProjects.Task;
-import scrumProjects.Team;
-import scrumProjects.UserStory;
+import ScrumProject.*;
 
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 import java.awt.*;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.Scanner;
+import java.util.*;
+import java.util.List;
 
 public class Main extends ListenerAdapter {
 
@@ -127,10 +123,6 @@ public class Main extends ListenerAdapter {
                 }
                 break;
 
-            case "delete":
-                //TODO: create an deletion method
-                break;
-
             case "show":
                 sendMessage(DataProvider.getInstance().getScrumProjects().build());
                 break;
@@ -158,7 +150,6 @@ public class Main extends ListenerAdapter {
                             }else{
                                 //Add the user to the collection
                                 DataProvider.getInstance().createUser(member.getName(), member.getIdLong());
-
                             }
                         UserData.User managementBotUser = DataProvider.getInstance().getUser(member.getIdLong());
                         managementBotUser.addToTeam(t);
@@ -169,7 +160,6 @@ public class Main extends ListenerAdapter {
                         sendMessage("Team doesnt exist!");
                     }
                 break;
-
 
             case "createTeam":
                 String teamName = splittedCommand[2];
@@ -345,10 +335,147 @@ public class Main extends ListenerAdapter {
                     sendMessage("You dont have any userstory's!");
                 }
                 break;
+
+            case "startSprint":
+                if(splittedCommand[2].equalsIgnoreCase("help")){
+                    createHelpEmbed("Starting a sprint", "To start a sprint you only have to type the following:\n" +
+                            ";scrum startSprint [Number of days the sprint will be] [The amount of story's from the backlog]\n" +
+                            "A sprint is between 2(14 days) - 4(28 days) weeks you cannot go lower or higher. \n");
+                }else{
+                    //A sprint is between 2 - 4 weeks.
+                    boolean canParseIntegerSprint = parseIntegerSprint(splittedCommand[2],14,28);
+                    boolean canParseIntegerBacklogsize = parseInteger(splittedCommand[3]);
+                    if(canParseIntegerSprint){
+                        if(canParseIntegerBacklogsize){
+                            int daysOfSprint = Integer.parseInt(splittedCommand[2]);
+                            int backlogSelection = Integer.parseInt(splittedCommand[3]);
+                            //So we need to get the currentDate.
+                            Date currentDate = new Date();
+                            //Using a calender to create a new enddate.
+                            Date endSprint = createEndTime(daysOfSprint);
+                            //ArrayList<Task> tasks = getTasks(backlogSelection,user.getCurrentProject().getProductBacklog());
+                            //Sprint t = new Sprint(currentDate, endSprint,tasks);
+                            //user.getCurrentProject().getSprints().add(t);
+                            //Start creation of the voice and text channels
+                            createDiscordElements(user.getCurrentProject());
+                        }
+                    }else{
+                        createErrorEmbed("Please fill in an **number** such as: **14** and not **fourteen** \n" +
+                                                 "Please keep in mind that a sprint is a minimum of **14** days and a maximum of **28** days");
+                    }
+                }
+                break;
+
             case "help":
                 createHelpEmbed();
                 break;
         }
+    }
+
+                                                        //Sprint t
+    private void createDiscordElements(Scrum currentProject) {
+        //UserData.User scrumMaster = currentProject.getScrumMaster();
+        UserData.User scrumMaster = DataProvider.getInstance().getUser(event.getAuthor().getIdLong());
+        //Team team = currentProject.getTeam();
+        Guild guild = event.getGuild();
+        //Check if there is already an role for the scrum team.
+        String scrumDiscordName = "scrumTeam_" + currentProject.getId();
+        if (!roleExists(guild.getRoles(), scrumDiscordName)) {
+            Role r = guild.createRole()
+                    .setName(scrumDiscordName)
+                    .complete();
+            guild.addRoleToMember(guild.getMemberById(scrumMaster.getId()), r).queue();
+            System.out.println("Create role and added it to the scrum master");
+        }
+        if (!categoryExists(guild.getCategories(), scrumDiscordName)) {
+            Role scrumDiscordRole = getRoleByName(scrumDiscordName, guild.getRoles());
+            Role everyoneRole = getRoleByName("@everyone", guild.getRoles());
+            Category c = createCategory(scrumDiscordName, guild,scrumDiscordRole,everyoneRole);
+            TextChannel t = guild.createTextChannel(scrumDiscordName).setParent(c).complete();
+            VoiceChannel v = guild.createVoiceChannel(scrumDiscordName).setParent(c).complete();
+            System.out.println("Created category");
+        }
+    }
+
+    private Role getRoleByName(String roleName, List<Role> roles) {
+        for (Role r : roles){
+            if(r.getName().equalsIgnoreCase(roleName)){
+                return r;
+            }
+        }
+        return null;
+    }
+
+    private Category createCategory(String categoryName, Guild guild,Role discordRole, Role everyone) {
+        Category c;
+        c = guild.createCategory(categoryName).complete();
+        return c;
+    }
+
+    private boolean roleExists(List<Role> roles, String roleName) {
+        boolean exists = false;
+        for (Role r : roles){
+            System.out.println(r.getName());
+            if(r.getName().equalsIgnoreCase(roleName)){
+                exists = true;
+            }
+        }
+        return exists;
+    }
+
+    private boolean categoryExists(List<Category> categories, String categoryName) {
+        boolean exists = false;
+        for (Category g : categories){
+            if(g.getName().equalsIgnoreCase(categoryName)){
+                exists = true;
+            }
+        }
+        return exists;
+    }
+
+    private Date createEndTime(int daysOfSprint) {
+        Calendar endSprintCalenderTime = Calendar.getInstance();
+        endSprintCalenderTime.add(Calendar.DAY_OF_YEAR, daysOfSprint);
+        return endSprintCalenderTime.getTime();
+    }
+
+    private ArrayList<Task> getTasks(int backlogSelectionAmount, ArrayList<UserStory> productBacklog) {
+        int iteratorUserstory = 0;
+        int iteratorTask = 0;
+        ArrayList<Task> retVal = new ArrayList<>();
+        for (UserStory u: productBacklog){
+            for (Task t : productBacklog.get(iteratorUserstory).getTasks()){
+                if(backlogSelectionAmount != iteratorTask){
+                    retVal.add(productBacklog.get(iteratorUserstory).getTasks().get(iteratorTask));
+                    iteratorTask++;
+                }
+            }
+            iteratorUserstory++;
+        }
+        return retVal;
+    }
+
+    private boolean parseIntegerSprint(String toParseInteger, int min, int max) {
+        boolean parsed = false;
+        int parsedInt = 0;
+        try{
+            parsedInt = Integer.parseInt(toParseInteger);
+            parsed = true;
+            if(parsedInt < min || parsedInt > max){
+                parsed = false;
+            }
+        }catch (Exception e){};
+        return parsed;
+    }
+
+    private boolean parseInteger(String toParseInteger) {
+        boolean parsed = false;
+        int tryToParse = 0;
+        try{
+            tryToParse = Integer.parseInt(toParseInteger);
+            parsed = true;
+        }catch (Exception e){};
+        return parsed;
     }
 
     private String getSentenceFromStringArray(String[] sentenceArray, int startingInt) {

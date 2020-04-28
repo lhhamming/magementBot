@@ -1,8 +1,8 @@
 package UserData;
 
 import net.dv8tion.jda.api.entities.MessageChannel;
-import scrumProjects.Scrum;
-import scrumProjects.Team;
+import ScrumProject.Scrum;
+import ScrumProject.Team;
 
 import java.util.ArrayList;
 

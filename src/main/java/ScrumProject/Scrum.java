@@ -1,4 +1,4 @@
-package scrumProjects;
+package ScrumProject;
 
 import UserData.User;
 
@@ -11,6 +11,7 @@ public class Scrum {
     private String productOwner;
     private Team team;
     private ArrayList<UserStory> productBacklog = new ArrayList<>();
+    private ArrayList<Sprint> sprints = new ArrayList<>();
 
     public Scrum(User creator, String productOwner, Team team){
         this.scrumMaster = creator;
@@ -42,6 +43,10 @@ public class Scrum {
 
     public ArrayList<UserStory> getProductBacklog() {
         return productBacklog;
+    }
+
+    public ArrayList<Sprint> getSprints() {
+        return sprints;
     }
 
     @Override

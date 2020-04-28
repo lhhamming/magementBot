@@ -1,4 +1,4 @@
-package scrumProjects;
+package ScrumProject;
 
 import java.util.ArrayList;
 

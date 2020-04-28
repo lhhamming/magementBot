@@ -1,4 +1,4 @@
-package scrumProjects;
+package ScrumProject;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -6,12 +6,12 @@ import java.util.Date;
 public class Sprint {
     private Date startDate;
     private Date endDate;
-    private ArrayList<UserStory> backlog;
+    private ArrayList<Task> tasks;
 
-    public Sprint(Date startDate, Date endDate, ArrayList<UserStory> backlog){
+    public Sprint(Date startDate, Date endDate, ArrayList<Task> tasks){
         this.startDate = startDate;
         this.endDate = endDate;
-        this.backlog = backlog;
+        this.tasks = tasks;
     }
 
     public static String Help() {
@@ -24,5 +24,9 @@ public class Sprint {
 
     public Date getStartDate() {
         return startDate;
+    }
+
+    public ArrayList<Task> getTasks() {
+        return tasks;
     }
 }

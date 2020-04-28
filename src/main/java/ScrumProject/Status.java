@@ -1,4 +1,4 @@
-package scrumProjects;
+package ScrumProject;
 
 public enum Status {
     todo,

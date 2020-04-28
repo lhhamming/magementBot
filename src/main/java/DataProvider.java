@@ -1,10 +1,12 @@
 import UserData.User;
 import net.dv8tion.jda.api.EmbedBuilder;
-import scrumProjects.Scrum;
-import scrumProjects.Team;
+import ScrumProject.Scrum;
+import ScrumProject.Team;
+import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.VoiceChannel;
 
 import java.awt.*;
-import java.security.cert.CertPathBuilder;
 import java.util.ArrayList;
 import java.util.HashMap;
 
