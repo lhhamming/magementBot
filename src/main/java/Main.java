@@ -2,10 +2,11 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
-import net.dv8tion.jda.api.events.ShutdownEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import ScrumProject.*;
+import net.dv8tion.jda.api.requests.restaction.ChannelAction;
+import net.dv8tion.jda.api.requests.restaction.order.CategoryOrderAction;
 
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
@@ -353,11 +354,14 @@ public class Main extends ListenerAdapter {
                             Date currentDate = new Date();
                             //Using a calender to create a new enddate.
                             Date endSprint = createEndTime(daysOfSprint);
-                            //ArrayList<Task> tasks = getTasks(backlogSelection,user.getCurrentProject().getProductBacklog());
-                            //Sprint t = new Sprint(currentDate, endSprint,tasks);
-                            //user.getCurrentProject().getSprints().add(t);
+                            ArrayList<Task> tasks = getTasks(backlogSelection,user.getCurrentProject().getProductBacklog());
+                            Sprint t = new Sprint(currentDate, endSprint,tasks);
+                            user.getCurrentProject().getSprints().add(t);
                             //Start creation of the voice and text channels
+                            String discordScrumName = "scrumTeam_" + user.getCurrentProject().getId();
                             createDiscordElements(user.getCurrentProject());
+                            TextChannel tasksChannel = getTextChannel(event.getGuild().getCategories(),discordScrumName + "_tasks");
+                            sendTasks(tasksChannel, tasks);
                         }
                     }else{
                         createErrorEmbed("Please fill in an **number** such as: **14** and not **fourteen** \n" +
@@ -372,8 +376,32 @@ public class Main extends ListenerAdapter {
         }
     }
 
-                                                        //Sprint t
+    private void sendTasks(TextChannel tasksChannel, ArrayList<Task> tasks) {
+        String taskString = "";
+        if(tasks.size() > 0){
+            for (Task t : tasks){
+                taskString = taskString + t;
+            }
+        }else{
+            taskString = "there arent any taks yet";
+        }
+        createTaskEmbed("tasks", taskString, tasksChannel);
+    }
+
+    private TextChannel getTextChannel(List<Category> categories, String textChannelName) {
+        for (Category c : categories){
+            for (TextChannel t : c.getTextChannels()){
+                if(t.getName().equalsIgnoreCase(textChannelName)){
+                    return t;
+                }
+            }
+        }
+        return null;
+    }
+
+    //Sprint t
     private void createDiscordElements(Scrum currentProject) {
+        //System.out.println(getallChannelPerms());
         //UserData.User scrumMaster = currentProject.getScrumMaster();
         UserData.User scrumMaster = DataProvider.getInstance().getUser(event.getAuthor().getIdLong());
         //Team team = currentProject.getTeam();
@@ -391,6 +419,7 @@ public class Main extends ListenerAdapter {
             Role scrumDiscordRole = getRoleByName(scrumDiscordName, guild.getRoles());
             Role everyoneRole = getRoleByName("@everyone", guild.getRoles());
             Category c = createCategory(scrumDiscordName, guild,scrumDiscordRole,everyoneRole);
+            TextChannel task = guild.createTextChannel(scrumDiscordName + "_tasks").setParent(c).complete();
             TextChannel t = guild.createTextChannel(scrumDiscordName).setParent(c).complete();
             VoiceChannel v = guild.createVoiceChannel(scrumDiscordName).setParent(c).complete();
             System.out.println("Created category");
@@ -408,7 +437,11 @@ public class Main extends ListenerAdapter {
 
     private Category createCategory(String categoryName, Guild guild,Role discordRole, Role everyone) {
         Category c;
-        c = guild.createCategory(categoryName).complete();
+        Long nothing = Long.parseLong("0");
+        c = guild.createCategory(categoryName)
+                .addRolePermissionOverride(discordRole.getIdLong(), Permission.ALL_CHANNEL_PERMISSIONS, Permission.KICK_MEMBERS.getRawValue())
+                .addRolePermissionOverride(everyone.getIdLong(), nothing, Permission.VIEW_CHANNEL.getRawValue())
+                .complete();
         return c;
     }
 
@@ -631,6 +664,15 @@ public class Main extends ListenerAdapter {
         eb.setDescription("Scrum Id: " + id + " Send by userId: " + userId);
         eb.addField(lineName,lineValue,false);
         sendMessage(eb.build());
+    }
+
+    private void createTaskEmbed(String title, String taskString, TextChannel tasksChannel) {
+        EmbedBuilder eb = new EmbedBuilder();
+        eb.setTitle(title, null);
+        eb.setColor(Color.blue);
+        eb.setDescription("");
+        eb.addField("", taskString,false);
+        tasksChannel.sendMessage(eb.build()).queue();
     }
 
     private void sendMessage(String toSendMessage) {
